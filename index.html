@@ -2621,6 +2621,58 @@ Kunci: A`;
             `).join('');
         }
 
+        // Fungsi Merender Tabel Active Session Lock tanpa Perlu Refresh Manual
+function renderActiveSessionsTable() {
+    const activeSessions = JSON.parse(localStorage.getItem('SIUS_V8_ACTIVE_SESSIONS')) || {};
+    const tbody = document.getElementById('tableActiveSessionsBody');
+    if (!tbody) return;
+
+    const keys = Object.keys(activeSessions);
+    if (keys.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-3">Tidak ada sesi siswa yang sedang aktif/terkunci.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = keys.map((key, index) => {
+        const session = activeSessions[key];
+        return `
+            <tr>
+                <td>${index + 1}</td>
+                <td><b>${session.nis}</b> (${session.nama || 'Siswa'})</td>
+                <td><span class="badge bg-info">${session.mapel}</span></td>
+                <td class="text-center">
+                    <button onclick="unlockStudentSession('${key}')" class="btn btn-sm btn-outline-danger">
+                        <i class="fa-solid fa-key me-1"></i> Reset Lock
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// Function Reset Lock Sesi Siswa
+function unlockStudentSession(sessionKey) {
+    let activeSessions = JSON.parse(localStorage.getItem('SIUS_V8_ACTIVE_SESSIONS')) || {};
+    delete activeSessions[sessionKey];
+    localStorage.setItem('SIUS_V8_ACTIVE_SESSIONS', JSON.stringify(activeSessions));
+    renderActiveSessionsTable();
+    Swal.fire('Sesi Dibuka', 'Siswa sekarang dapat login kembali.', 'success');
+}
+
+// Auto Refresh / Listener saat ada Perubahan Sesi dari Tab Lain
+function initAdminAutoRefresh() {
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'SIUS_V8_ACTIVE_SESSIONS') {
+            renderActiveSessionsTable(); // Otomatis perbarui tabel jika siswa login/logout
+        }
+    });
+
+    // Background Polling setiap 3 Detik agar Sesi Aktif Selalu Real-Time
+    setInterval(() => {
+        renderActiveSessionsTable();
+    }, 3000);
+}
+
         function openCoAdminModal(editId = null) {
             document.getElementById('formCoAdmin').reset();
             document.getElementById('editCoAdminId').value = editId || '';
