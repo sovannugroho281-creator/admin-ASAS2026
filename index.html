@@ -1304,7 +1304,20 @@ Kunci: A</code></pre>
 
         document.addEventListener('DOMContentLoaded', () => {
 
-            // 1. CEK SESI PERSISTEN ADMIN DARI LOCALSTORAGE
+            checkAdminSessionPersistent();
+            populateMapelSelects();
+            renderBankSoalTable();
+            renderJadwalTable();
+            renderMasterMapelTable();
+            renderMasterSiswaTable();
+            renderStudentCards();
+            renderHasilTable();
+            renderAuditLogTable();
+            renderAnalisisTable();
+            renderCoAdminTable();
+            renderBAUTable();
+
+             // 1. CEK SESI PERSISTEN ADMIN DARI LOCALSTORAGE
     const savedAdmin = localStorage.getItem('SIUS_V8_ACTIVE_ADMIN');
     
     if (savedAdmin) {
@@ -1328,17 +1341,6 @@ Kunci: A</code></pre>
             localStorage.removeItem('SIUS_V8_ACTIVE_ADMIN');
         }
     }
-            populateMapelSelects();
-            renderBankSoalTable();
-            renderJadwalTable();
-            renderMasterMapelTable();
-            renderMasterSiswaTable();
-            renderStudentCards();
-            renderHasilTable();
-            renderAuditLogTable();
-            renderAnalisisTable();
-            renderCoAdminTable();
-            renderBAUTable();
 
             if (gasBackendUrl) {
                 document.getElementById('inputGASUrl').value = gasBackendUrl;
