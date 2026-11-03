@@ -1303,6 +1303,31 @@ Kunci: A</code></pre>
         let currentAdminUser = null;
 
         document.addEventListener('DOMContentLoaded', () => {
+
+            // 1. CEK SESI PERSISTEN ADMIN DARI LOCALSTORAGE
+    const savedAdmin = localStorage.getItem('SIUS_V8_ACTIVE_ADMIN');
+    
+    if (savedAdmin) {
+        try {
+            const adminObj = JSON.parse(savedAdmin);
+            if (adminObj && adminObj.username) {
+                currentAdminUser = adminObj;
+                
+                // Sembunyikan Login, Tampilkan Dashboard Admin
+                const loginSec = document.getElementById('adminLoginSection');
+                const portalSec = document.getElementById('portalAdmin');
+                
+                if (loginSec) loginSec.classList.add('d-none');
+                if (portalSec) portalSec.classList.remove('d-none');
+                
+                document.getElementById('adminTopName').innerText = currentAdminUser.nama || 'Super Admin';
+                document.getElementById('adminTopRole').innerText = 'Super Admin';
+            }
+        } catch (e) {
+            console.error("Gagal parse sesi admin:", e);
+            localStorage.removeItem('SIUS_V8_ACTIVE_ADMIN');
+        }
+    }
             populateMapelSelects();
             renderBankSoalTable();
             renderJadwalTable();
