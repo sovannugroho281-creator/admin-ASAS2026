@@ -1338,7 +1338,6 @@ Kunci: A</code></pre>
             renderAnalisisTable();
             renderCoAdminTable();
             renderBAUTable();
-            initAdminAutoRefresh();
 
             if (gasBackendUrl) {
                 document.getElementById('inputGASUrl').value = gasBackendUrl;
@@ -1363,6 +1362,7 @@ Kunci: A</code></pre>
                 }
             }
 
+            // Simpan sesi login agar tidak hilang saat halaman direfresh
             localStorage.setItem('SIUS_V8_ACTIVE_ADMIN', JSON.stringify(currentAdminUser));
 
             document.getElementById('adminLoginSection').classList.add('d-none');
@@ -2645,18 +2645,6 @@ Kunci: A`;
                     </td>
                 </tr>
             `).join('');
-        }
-
-        function initAdminAutoRefresh() {
-            window.addEventListener('storage', (e) => {
-                if (e.key === 'SIUS_V8_ACTIVE_SESSIONS') {
-                    renderSessionLockTable();
-                }
-            });
-
-            setInterval(() => {
-                renderSessionLockTable();
-            }, 3000);
         }
 
         function openCoAdminModal(editId = null) {
