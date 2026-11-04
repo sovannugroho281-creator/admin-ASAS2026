@@ -1298,12 +1298,34 @@ Kunci: A</code></pre>
         let activeSessionLocks = JSON.parse(localStorage.getItem('SIUS_V8_ACTIVE_SESSIONS')) || {};
         let examResults = JSON.parse(localStorage.getItem('SIUS_V8_RESULTS')) || [];
         let auditLogs = JSON.parse(localStorage.getItem('SIUS_V8_AUDITLOGS')) || [];
-        let gasBackendUrl = "https://script.google.com/macros/s/AKfycbwOp8IbbQRQUfi9Oq8oioU_KCYzGh1PDwx1OvivK-R6bKXI0-Jz75n-K83tAN9AU_A7SQ/exec";
+        let gasBackendUrl = localStorage.getItem('SIUS_V8_GAS_URL') || "https://script.google.com/macros/s/AKfycbwOp8IbbQRQUfi9Oq8oioU_KCYzGh1PDwx1OvivK-R6bKXI0-Jz75n-K83tAN9AU_A7SQ/exec";
 
         let currentAdminUser = null;
 
-        document.addEventListener('DOMContentLoaded', () => {
+        function checkAdminSessionPersistent() {
+            const savedAdmin = localStorage.getItem('SIUS_V8_ACTIVE_ADMIN');
+            if (savedAdmin) {
+                try {
+                    const adminObj = JSON.parse(savedAdmin);
+                    if (adminObj && adminObj.username) {
+                        currentAdminUser = adminObj;
+                        const loginSec = document.getElementById('adminLoginSection');
+                        const portalSec = document.getElementById('portalAdmin');
+                        if (loginSec) loginSec.classList.add('d-none');
+                        if (portalSec) portalSec.classList.remove('d-none');
+                        
+                        document.getElementById('adminTopName').innerText = currentAdminUser.nama || 'Super Admin';
+                        document.getElementById('adminTopRole').innerText = currentAdminUser.role === 'SUPER_ADMIN' ? 'Super Admin' : `Co-Admin (${currentAdminUser.mapel})`;
+                        applyAdminRBACUI();
+                    }
+                } catch (e) {
+                    console.error("Gagal memuat sesi admin:", e);
+                    localStorage.removeItem('SIUS_V8_ACTIVE_ADMIN');
+                }
+            }
+        }
 
+        document.addEventListener('DOMContentLoaded', () => {
             checkAdminSessionPersistent();
             populateMapelSelects();
             renderBankSoalTable();
@@ -1316,31 +1338,7 @@ Kunci: A</code></pre>
             renderAnalisisTable();
             renderCoAdminTable();
             renderBAUTable();
-
-             // 1. CEK SESI PERSISTEN ADMIN DARI LOCALSTORAGE
-    const savedAdmin = localStorage.getItem('SIUS_V8_ACTIVE_ADMIN');
-    
-    if (savedAdmin) {
-        try {
-            const adminObj = JSON.parse(savedAdmin);
-            if (adminObj && adminObj.username) {
-                currentAdminUser = adminObj;
-                
-                // Sembunyikan Login, Tampilkan Dashboard Admin
-                const loginSec = document.getElementById('adminLoginSection');
-                const portalSec = document.getElementById('portalAdmin');
-                
-                if (loginSec) loginSec.classList.add('d-none');
-                if (portalSec) portalSec.classList.remove('d-none');
-                
-                document.getElementById('adminTopName').innerText = currentAdminUser.nama || 'Super Admin';
-                document.getElementById('adminTopRole').innerText = 'Super Admin';
-            }
-        } catch (e) {
-            console.error("Gagal parse sesi admin:", e);
-            localStorage.removeItem('SIUS_V8_ACTIVE_ADMIN');
-        }
-    }
+            initAdminAutoRefresh();
 
             if (gasBackendUrl) {
                 document.getElementById('inputGASUrl').value = gasBackendUrl;
@@ -1365,6 +1363,8 @@ Kunci: A</code></pre>
                 }
             }
 
+            localStorage.setItem('SIUS_V8_ACTIVE_ADMIN', JSON.stringify(currentAdminUser));
+
             document.getElementById('adminLoginSection').classList.add('d-none');
             document.getElementById('portalAdmin').classList.remove('d-none');
             
@@ -1377,6 +1377,7 @@ Kunci: A</code></pre>
 
         function logoutAdmin() {
             currentAdminUser = null;
+            localStorage.removeItem('SIUS_V8_ACTIVE_ADMIN');
             document.getElementById('portalAdmin').classList.add('d-none');
             document.getElementById('adminLoginSection').classList.remove('d-none');
             document.getElementById('adminTopName').innerText = 'Belum Login';
@@ -1747,8 +1748,6 @@ Kunci: A</code></pre>
             }
 
             localStorage.setItem('SIUS_V8_QUESTIONS', JSON.stringify(questionsData));
-            
-            // Sync to Google Sheets Cloud via GAS Webhook
             sendQuestionToCloud(newQuestion);
 
             renderBankSoalTable();
@@ -2648,57 +2647,17 @@ Kunci: A`;
             `).join('');
         }
 
-        // Fungsi Merender Tabel Active Session Lock tanpa Perlu Refresh Manual
-function renderActiveSessionsTable() {
-    const activeSessions = JSON.parse(localStorage.getItem('SIUS_V8_ACTIVE_SESSIONS')) || {};
-    const tbody = document.getElementById('tableActiveSessionsBody');
-    if (!tbody) return;
+        function initAdminAutoRefresh() {
+            window.addEventListener('storage', (e) => {
+                if (e.key === 'SIUS_V8_ACTIVE_SESSIONS') {
+                    renderSessionLockTable();
+                }
+            });
 
-    const keys = Object.keys(activeSessions);
-    if (keys.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-3">Tidak ada sesi siswa yang sedang aktif/terkunci.</td></tr>`;
-        return;
-    }
-
-    tbody.innerHTML = keys.map((key, index) => {
-        const session = activeSessions[key];
-        return `
-            <tr>
-                <td>${index + 1}</td>
-                <td><b>${session.nis}</b> (${session.nama || 'Siswa'})</td>
-                <td><span class="badge bg-info">${session.mapel}</span></td>
-                <td class="text-center">
-                    <button onclick="unlockStudentSession('${key}')" class="btn btn-sm btn-outline-danger">
-                        <i class="fa-solid fa-key me-1"></i> Reset Lock
-                    </button>
-                </td>
-            </tr>
-        `;
-    }).join('');
-}
-
-// Function Reset Lock Sesi Siswa
-function unlockStudentSession(sessionKey) {
-    let activeSessions = JSON.parse(localStorage.getItem('SIUS_V8_ACTIVE_SESSIONS')) || {};
-    delete activeSessions[sessionKey];
-    localStorage.setItem('SIUS_V8_ACTIVE_SESSIONS', JSON.stringify(activeSessions));
-    renderActiveSessionsTable();
-    Swal.fire('Sesi Dibuka', 'Siswa sekarang dapat login kembali.', 'success');
-}
-
-// Auto Refresh / Listener saat ada Perubahan Sesi dari Tab Lain
-function initAdminAutoRefresh() {
-    window.addEventListener('storage', (e) => {
-        if (e.key === 'SIUS_V8_ACTIVE_SESSIONS') {
-            renderActiveSessionsTable(); // Otomatis perbarui tabel jika siswa login/logout
+            setInterval(() => {
+                renderSessionLockTable();
+            }, 3000);
         }
-    });
-
-    // Background Polling setiap 3 Detik agar Sesi Aktif Selalu Real-Time
-    setInterval(() => {
-        renderActiveSessionsTable();
-    }, 3000);
-}
 
         function openCoAdminModal(editId = null) {
             document.getElementById('formCoAdmin').reset();
@@ -2862,7 +2821,7 @@ function initAdminAutoRefresh() {
 
             localStorage.setItem('SIUS_V8_RESULTS', JSON.stringify(examResults));
             renderHasilTable();
-            bootstrap.Modal.getInstance(document.getElementById('modalKoreksiExecution')).hide();
+            bootstrap.Modal.getInstance(document.getElementById('modalKoreksiEssay')).hide();
             Swal.fire('Tersimpan', 'Nilai essay berhasil disimpan dan skor final telah diperbarui.', 'success');
         }
     </script>
